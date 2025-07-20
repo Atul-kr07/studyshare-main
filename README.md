@@ -213,3 +213,4 @@ Pull requests are welcome! For major changes, please open an issue first to disc
 - [Google OAuth](https://developers.google.com/identity)
 - [Tailwind CSS](https://tailwindcss.com/)
 - [Lucide Icons](https://lucide.dev/)
+# studyshare-main
