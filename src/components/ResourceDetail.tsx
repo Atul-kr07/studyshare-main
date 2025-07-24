@@ -15,13 +15,8 @@ interface ResourceDetailProps {
 export function ResourceDetail({ resource, onBack, user, onAuthClick }: ResourceDetailProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Determine uploader name: if current user is the uploader, show their name; else fallback to uploadedBy or 'Unknown'
-  let uploaderName = 'Unknown';
-  if (user && String(resource.uploadedBy) === String(user.id)) {
-    uploaderName = user.name;
-  } else if (resource.uploadedBy) {
-    uploaderName = String(resource.uploadedBy);
-  }
+  // Always use uploaderName from resource if available
+  const uploaderName = resource.uploaderName || 'Unknown';
 
   useEffect(() => {
     if (resource.fileType === 'PDF' && resource.fileUrl && canvasRef.current) {

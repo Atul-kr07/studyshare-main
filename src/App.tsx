@@ -14,7 +14,6 @@ export type Resource = {
   title: string;
   description: string;
   category: string;
-  college: string;
   fileType: string;
   fileUrl: string;
   uploadedBy: string;

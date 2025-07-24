@@ -59,8 +59,7 @@ export function UploadModal({ onClose, onSuccess, onUpload, user }: UploadModalP
         uploadedAt: new Date().toISOString(),
         downloads: 0,
         rating: 0,
-        fileUrl,
-        college: user.college
+        fileUrl
       };
 
       // 3. Call your uploadResource function (save to DB)

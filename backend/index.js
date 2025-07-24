@@ -49,12 +49,11 @@ passport.use(new GoogleStrategy({
     const conn = await mysql.createConnection(dbConfig);
     const email = profile.emails[0].value;
     const name = profile.displayName;
-    const college = '';
     let [rows] = await conn.execute('SELECT * FROM users WHERE email = ?', [email]);
     let user;
     if (rows.length === 0) {
       // Create user if not exists
-      await conn.execute('INSERT INTO users (name, email, college) VALUES (?, ?, ?)', [name, email, college]);
+      await conn.execute('INSERT INTO users (name, email) VALUES (?, ?)', [name, email]);
       [rows] = await conn.execute('SELECT * FROM users WHERE email = ?', [email]);
     }
     user = rows[0];
@@ -168,7 +167,6 @@ app.post('/api/resources', authenticate, async (req, res) => {
     title,
     description,
     category,
-    college,
     fileType,
     fileUrl,
     uploadedBy,
@@ -184,12 +182,11 @@ app.post('/api/resources', authenticate, async (req, res) => {
   try {
     const conn = await mysql.createConnection(dbConfig);
     await conn.execute(
-      'INSERT INTO resources (title, description, category, college, fileType, fileUrl, uploadedBy, uploadedAt, downloads, rating, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO resources (title, description, category, fileType, fileUrl, uploadedBy, uploadedAt, downloads, rating, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         title,
         description,
         category,
-        college,
         fileType,
         fileUrl,
         uploadedBy,
