@@ -224,7 +224,7 @@ app.get('/api/resources', async (req, res) => {
     const resources = rows.map(r => ({ ...r, tags: JSON.parse(r.tags || '[]') }));
     res.json({ resources });
   } catch (err) {
-    console.error('Fetch resources error:', err.stack || err);
+    console.error('Fetch resources error:', JSON.stringify(err, Object.getOwnPropertyNames(err)));
     res.status(500).json({ error: 'Failed to fetch resources' });
   }
 });
