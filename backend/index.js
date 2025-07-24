@@ -32,8 +32,12 @@ const storage = new CloudinaryStorage({
 const upload = multer({ storage: storage });
 
 const app = express();
+// CORS: allow local and deployed frontend
 app.use(cors({
-  origin: 'http://localhost:5173', // frontend URL
+  origin: [
+    'http://localhost:5173',
+    process.env.FRONTEND_URL // e.g. https://studyshare-main.vercel.app
+  ],
   credentials: true
 }));
 app.use(express.json());
@@ -43,7 +47,7 @@ app.use(passport.initialize());
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: 'http://localhost:4000/api/auth/google/callback',
+  callbackURL: process.env.GOOGLE_CALLBACK_URL,
 }, async (accessToken, refreshToken, profile, done) => {
   try {
     const conn = await mysql.createConnection(dbConfig);
@@ -73,19 +77,20 @@ app.get('/api/auth/google/callback', passport.authenticate('google', { session: 
   const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET || 'secret', { expiresIn: '1d' });
   res.cookie('token', token, {
     httpOnly: true,
-    secure: false,
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
     maxAge: 24 * 60 * 60 * 1000
   });
   // Redirect to frontend dashboard or profile
-  res.redirect('http://localhost:5173');
+  res.redirect(process.env.FRONTEND_URL);
 });
 
+// Use environment variables for DB config (for production)
 const dbConfig = {
-  host: 'localhost',
-  user: 'root',
-  password: 'Atul@9798',
-  database: 'studyshare'
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || 'Atul@9798',
+  database: process.env.DB_NAME || 'studyshare'
 };
 
 // Configure nodemailer transporter (using Gmail as example)
@@ -219,7 +224,7 @@ app.get('/api/resources', async (req, res) => {
     const resources = rows.map(r => ({ ...r, tags: JSON.parse(r.tags || '[]') }));
     res.json({ resources });
   } catch (err) {
-    console.error('Fetch resources error:', err);
+    console.error('Fetch resources error:', err.stack || err);
     res.status(500).json({ error: 'Failed to fetch resources' });
   }
 });
