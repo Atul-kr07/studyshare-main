@@ -13,7 +13,11 @@ export function useResources() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_URL}/resources`, { credentials: 'include' });
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/resources`, { 
+        credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
       if (!res.ok) {
         throw new Error(`Failed to fetch resources: ${res.status}`);
       }

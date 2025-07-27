@@ -96,12 +96,21 @@ function App() {
       )}
 
       {currentView === 'profile' && user && (
-        <UserProfile 
-          user={user}
-          resources={resources.filter((r: Resource) => String(r.uploadedBy) === String(user.id))}
-          onResourceSelect={handleResourceSelect}
-          onBack={() => setCurrentView('dashboard')}
-        />
+        (() => {
+          const userResources = resources.filter((r: Resource) => String(r.uploadedBy) === String(user.id));
+          console.log('All resources:', resources);
+          console.log('User ID:', user.id);
+          console.log('User resources:', userResources);
+          console.log('Resource uploadedBy values:', resources.map(r => ({ id: r.id, uploadedBy: r.uploadedBy, type: typeof r.uploadedBy })));
+          return (
+            <UserProfile 
+              user={user}
+              resources={userResources}
+              onResourceSelect={handleResourceSelect}
+              onBack={() => setCurrentView('dashboard')}
+            />
+          );
+        })()
       )}
 
       {showAuthModal && (
