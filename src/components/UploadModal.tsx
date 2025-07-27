@@ -37,7 +37,7 @@ export function UploadModal({ onClose, onSuccess, onUpload, user }: UploadModalP
       if (file) {
         const uploadData = new FormData();
         uploadData.append('file', file);
-        const res = await fetch('http://localhost:4000/api/upload', {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/upload`, {
           method: 'POST',
           body: uploadData,
           credentials: 'include'

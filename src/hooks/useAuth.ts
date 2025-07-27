@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User } from '../App';
 
-const API_URL = 'http://localhost:4000/api';
+const API_URL = import.meta.env.VITE_API_URL;
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);

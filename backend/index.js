@@ -1,5 +1,5 @@
 const express = require('express');
-const mysql = require('mysql2/promise');
+const mongoose = require('mongoose');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -12,6 +12,10 @@ const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+
+// Import models
+const User = require('./models/User');
+const Resource = require('./models/Resource');
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -44,24 +48,28 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(passport.initialize());
 
+// Connect to MongoDB
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => console.log('Connected to MongoDB'))
+.catch(err => console.error('MongoDB connection error:', err));
+
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
   callbackURL: process.env.GOOGLE_CALLBACK_URL,
 }, async (accessToken, refreshToken, profile, done) => {
   try {
-    const conn = await mysql.createConnection(dbConfig);
     const email = profile.emails[0].value;
     const name = profile.displayName;
-    let [rows] = await conn.execute('SELECT * FROM users WHERE email = ?', [email]);
-    let user;
-    if (rows.length === 0) {
+    let user = await User.findOne({ email });
+    if (!user) {
       // Create user if not exists
-      await conn.execute('INSERT INTO users (name, email) VALUES (?, ?)', [name, email]);
-      [rows] = await conn.execute('SELECT * FROM users WHERE email = ?', [email]);
+      user = new User({ name, email });
+      await user.save();
     }
-    user = rows[0];
-    conn.end();
     return done(null, user);
   } catch (err) {
     return done(err);
@@ -74,7 +82,7 @@ app.get('/api/auth/google', passport.authenticate('google', { scope: ['profile',
 app.get('/api/auth/google/callback', passport.authenticate('google', { session: false, failureRedirect: '/' }), (req, res) => {
   // Issue JWT
   const user = req.user;
-  const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET || 'secret', { expiresIn: '1d' });
+  const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET || 'secret', { expiresIn: '1d' });
   res.cookie('token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -84,14 +92,6 @@ app.get('/api/auth/google/callback', passport.authenticate('google', { session: 
   // Redirect to frontend dashboard or profile
   res.redirect(process.env.FRONTEND_URL);
 });
-
-// Use environment variables for DB config (for production)
-const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || 'Atul@9798',
-  database: process.env.DB_NAME || 'studyshare'
-};
 
 // Configure nodemailer transporter (using Gmail as example)
 const transporter = nodemailer.createTransport({
@@ -118,11 +118,9 @@ const authenticate = (req, res, next) => {
 // Get current user
 app.get('/api/me', authenticate, async (req, res) => {
   try {
-    const conn = await mysql.createConnection(dbConfig);
-    const [rows] = await conn.execute('SELECT id, name, email FROM users WHERE id = ?', [req.user.id]);
-    conn.end();
-    if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
-    res.json({ user: rows[0] });
+    const user = await User.findById(req.user.id).select('name email');
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ user });
   } catch {
     res.status(500).json({ error: 'Server error' });
   }
@@ -132,12 +130,9 @@ app.get('/api/me', authenticate, async (req, res) => {
 app.post('/api/update-profile', authenticate, async (req, res) => {
   const { name, college, phone, degree_year, about } = req.body;
   try {
-    const conn = await mysql.createConnection(dbConfig);
-    await conn.execute(
-      'UPDATE users SET name = ?, college = ?, phone = ?, degree_year = ?, about = ? WHERE id = ?',
-      [name, college, phone, degree_year, about, req.user.id]
-    );
-    conn.end();
+    await User.findByIdAndUpdate(req.user.id, {
+      name, college, phone, degree_year, about
+    });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
@@ -158,14 +153,6 @@ app.post('/api/upload', authenticate, upload.single('file'), async (req, res) =>
   }
 });
 
-// Helper to convert ISO to MySQL DATETIME (robust)
-const mysqlDatetime = (dateString) => {
-  if (!dateString) return new Date().toISOString().slice(0, 19).replace('T', ' ');
-  const d = new Date(dateString);
-  if (isNaN(d.getTime())) return new Date().toISOString().slice(0, 19).replace('T', ' ');
-  return d.toISOString().slice(0, 19).replace('T', ' ');
-};
-
 // Create a new resource
 app.post('/api/resources', authenticate, async (req, res) => {
   const {
@@ -180,28 +167,19 @@ app.post('/api/resources', authenticate, async (req, res) => {
     tags
   } = req.body;
 
-  // Always use current server time for uploadedAt
-  const uploadedAtMysql = new Date().toISOString().slice(0, 19).replace('T', ' ');
-  console.log('Using server uploadedAt:', uploadedAtMysql);
-
   try {
-    const conn = await mysql.createConnection(dbConfig);
-    await conn.execute(
-      'INSERT INTO resources (title, description, category, fileType, fileUrl, uploadedBy, uploadedAt, downloads, rating, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [
-        title,
-        description,
-        category,
-        fileType,
-        fileUrl,
-        uploadedBy,
-        uploadedAtMysql, // always use server time
-        downloads || 0,
-        rating || 0,
-        JSON.stringify(tags || [])
-      ]
-    );
-    conn.end();
+    const resource = new Resource({
+      title,
+      description,
+      category,
+      fileType,
+      fileUrl,
+      uploadedBy,
+      downloads: downloads || 0,
+      rating: rating || 0,
+      tags: tags || []
+    });
+    await resource.save();
     res.json({ success: true });
   } catch (err) {
     console.error('Resource upload error:', err);
@@ -212,19 +190,20 @@ app.post('/api/resources', authenticate, async (req, res) => {
 // Get all resources
 app.get('/api/resources', async (req, res) => {
   try {
-    const conn = await mysql.createConnection(dbConfig);
-    const [rows] = await conn.execute(`
-      SELECT r.*, u.name AS uploaderName
-      FROM resources r
-      LEFT JOIN users u ON r.uploadedBy = u.id
-      ORDER BY r.uploadedAt DESC
-    `);
-    conn.end();
-    // Parse tags from JSON
-    const resources = rows.map(r => ({ ...r, tags: JSON.parse(r.tags || '[]') }));
-    res.json({ resources });
+    const resources = await Resource.find()
+      .populate('uploadedBy', 'name')
+      .sort({ uploadedAt: -1 });
+    
+    // Transform to match frontend expectations
+    const transformedResources = resources.map(resource => ({
+      ...resource.toObject(),
+      id: resource._id,
+      uploaderName: resource.uploadedBy?.name || 'Unknown'
+    }));
+    
+    res.json({ resources: transformedResources });
   } catch (err) {
-    console.error('Fetch resources error:', JSON.stringify(err, Object.getOwnPropertyNames(err)));
+    console.error('Fetch resources error:', err);
     res.status(500).json({ error: 'Failed to fetch resources' });
   }
 });
@@ -232,19 +211,14 @@ app.get('/api/resources', async (req, res) => {
 // Delete resource endpoint
 app.delete('/api/resources/:id', authenticate, async (req, res) => {
   try {
-    const conn = await mysql.createConnection(dbConfig);
-    // Only allow deletion if the resource belongs to the user
-    const [rows] = await conn.execute('SELECT uploadedBy FROM resources WHERE id = ?', [req.params.id]);
-    if (rows.length === 0) {
-      conn.end();
+    const resource = await Resource.findById(req.params.id);
+    if (!resource) {
       return res.status(404).json({ error: 'Resource not found' });
     }
-    if (String(rows[0].uploadedBy) !== String(req.user.id)) {
-      conn.end();
+    if (String(resource.uploadedBy) !== String(req.user.id)) {
       return res.status(403).json({ error: 'Not authorized to delete this resource' });
     }
-    await conn.execute('DELETE FROM resources WHERE id = ?', [req.params.id]);
-    conn.end();
+    await Resource.findByIdAndDelete(req.params.id);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
@@ -260,11 +234,9 @@ app.post('/api/logout', (req, res) => {
 // Public user info endpoint
 app.get('/api/user/:id', async (req, res) => {
   try {
-    const conn = await mysql.createConnection(dbConfig);
-    const [rows] = await conn.execute('SELECT id, name, avatar FROM users WHERE id = ?', [req.params.id]);
-    conn.end();
-    if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
-    res.json({ user: rows[0] });
+    const user = await User.findById(req.params.id).select('name avatar');
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ user });
   } catch {
     res.status(500).json({ error: 'Server error' });
   }

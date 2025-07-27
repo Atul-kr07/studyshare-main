@@ -1,27 +1,46 @@
 import { useState, useEffect } from 'react';
-import { Resource } from '../App';
+import { Resource } from '../App'; // Consider moving Resource type to a separate types file
 
-const API_URL = 'http://localhost:4000/api';
+const API_URL = import.meta.env.VITE_API_URL;
 
 export function useResources() {
   const [resources, setResources] = useState<Resource[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch resources from backend
+  const fetchResources = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_URL}/resources`, { credentials: 'include' });
+      if (!res.ok) {
+        throw new Error(`Failed to fetch resources: ${res.status}`);
+      }
+      const data = await res.json();
+      if (data.resources) {
+        setResources(data.resources);
+      } else {
+        setResources([]);
+      }
+    } catch (err: any) {
+      console.error('Error fetching resources:', err);
+      setError(err.message || 'Unknown error');
+      setResources([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchResources = async () => {
-      try {
-        const res = await fetch(`${API_URL}/resources`, { credentials: 'include' });
-        const data = await res.json();
-        if (res.ok && data.resources) {
-          setResources(data.resources);
-        }
-      } catch (err) {
-        // Optionally handle error
-      }
-    };
     fetchResources();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Upload a new resource
   const uploadResource = async (resourceData: Omit<Resource, 'id'>): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`${API_URL}/resources`, {
         method: 'POST',
@@ -29,23 +48,44 @@ export function useResources() {
         credentials: 'include',
         body: JSON.stringify(resourceData)
       });
-      if (res.ok) {
-        // Re-fetch resources after upload
-        const updated = await fetch(`${API_URL}/resources`, { credentials: 'include' });
-        const data = await updated.json();
-        if (updated.ok && data.resources) {
-          setResources(data.resources);
-        }
-        return true;
+      if (!res.ok) {
+        throw new Error(`Failed to upload resource: ${res.status}`);
       }
+      // Re-fetch resources after upload
+      await fetchResources();
+      return true;
+    } catch (err: any) {
+      console.error('Error uploading resource:', err);
+      setError(err.message || 'Unknown error');
       return false;
-    } catch {
-      return false;
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Optionally implement searchResources if needed
-  const searchResources = () => {};
+  // Optional: Implement search functionality
+  const searchResources = async (query: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_URL}/resources?search=${encodeURIComponent(query)}`, { credentials: 'include' });
+      if (!res.ok) {
+        throw new Error(`Failed to search resources: ${res.status}`);
+      }
+      const data = await res.json();
+      if (data.resources) {
+        setResources(data.resources);
+      } else {
+        setResources([]);
+      }
+    } catch (err: any) {
+      console.error('Error searching resources:', err);
+      setError(err.message || 'Unknown error');
+      setResources([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  return { resources, uploadResource, searchResources };
+  return { resources, loading, error, uploadResource, searchResources, fetchResources };
 }

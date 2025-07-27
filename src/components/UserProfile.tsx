@@ -20,7 +20,7 @@ export function UserProfile({ user, resources, onResourceSelect, onBack }: UserP
     if (!window.confirm('Are you sure you want to delete this resource? This action cannot be undone.')) return;
     setDeletingId(id);
     try {
-      const res = await fetch(`http://localhost:4000/api/resources/${id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/resources/${id}`, {
         method: 'DELETE',
         credentials: 'include'
       });
