@@ -107,26 +107,13 @@ function App() {
           // Expand the resources to see their full structure
           console.log('Full resource objects:', JSON.stringify(resources, null, 2));
           
-          // Log each resource's uploadedBy field in detail
-          resources.forEach((r, index) => {
-            console.log(`Resource ${index} uploadedBy:`, r.uploadedBy);
-            console.log(`Resource ${index} uploadedBy type:`, typeof r.uploadedBy);
-            console.log(`Resource ${index} uploadedBy keys:`, r.uploadedBy && typeof r.uploadedBy === 'object' ? Object.keys(r.uploadedBy) : 'N/A');
-          });
-          
           const userResources = resources.filter((r: Resource) => {
             // Get the uploadedBy value as string
             let resourceUserId;
             if (typeof r.uploadedBy === 'object' && r.uploadedBy !== null) {
-              // Handle MongoDB ObjectId properly
+              // uploadedBy is populated with user data, so access the _id property
               const uploadedByObj = r.uploadedBy as any;
-              if (uploadedByObj.$oid) {
-                resourceUserId = uploadedByObj.$oid;
-              } else if (uploadedByObj.toString) {
-                resourceUserId = uploadedByObj.toString();
-              } else {
-                resourceUserId = String(uploadedByObj);
-              }
+              resourceUserId = uploadedByObj._id;
             } else {
               resourceUserId = String(r.uploadedBy);
             }
