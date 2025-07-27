@@ -100,30 +100,32 @@ function App() {
         (() => {
           console.log('Complete user object:', user);
           console.log('User object keys:', Object.keys(user));
-          // Use _id instead of id (MongoDB ObjectId)
-          const userId = user._id || user.id;
+          // Try different possible ID fields
+          const userId = user._id || user.id || (user as any)._id;
           console.log('User ID to use:', userId);
+          
+          // Expand the resources to see their full structure
+          console.log('Full resource objects:', JSON.stringify(resources, null, 2));
+          
           const userResources = resources.filter((r: Resource) => {
-            // Handle ObjectId comparison properly
-            const resourceUserId = typeof r.uploadedBy === 'object' ? r.uploadedBy.toString() : String(r.uploadedBy);
+            // Get the uploadedBy value as string
+            let resourceUserId;
+            if (typeof r.uploadedBy === 'object' && r.uploadedBy !== null) {
+              resourceUserId = (r.uploadedBy as any).toString();
+            } else {
+              resourceUserId = String(r.uploadedBy);
+            }
+            
             const currentUserId = String(userId);
-            return resourceUserId === currentUserId;
+            const matches = resourceUserId === currentUserId;
+            console.log(`Comparing: resourceUserId="${resourceUserId}" vs currentUserId="${currentUserId}" = ${matches}`);
+            return matches;
           });
+          
           console.log('All resources:', resources);
           console.log('User ID:', userId, 'Type:', typeof userId);
           console.log('User resources:', userResources);
-          console.log('Resource uploadedBy values:', resources.map(r => ({ 
-            id: r.id, 
-            uploadedBy: r.uploadedBy, 
-            type: typeof r.uploadedBy,
-            comparison: (typeof r.uploadedBy === 'object' ? r.uploadedBy.toString() : String(r.uploadedBy)) === String(userId)
-          })));
-          console.log('Filtering details:');
-          resources.forEach((r, index) => {
-            const resourceUserId = typeof r.uploadedBy === 'object' ? r.uploadedBy.toString() : String(r.uploadedBy);
-            const currentUserId = String(userId);
-            console.log(`Resource ${index}: uploadedBy="${resourceUserId}" (${typeof r.uploadedBy}) vs userId="${currentUserId}" (${typeof userId}) = ${resourceUserId === currentUserId}`);
-          });
+          
           return (
             <UserProfile 
               user={user}
