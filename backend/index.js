@@ -150,13 +150,18 @@ app.post('/api/update-profile', authenticate, async (req, res) => {
 // Upload resource file to Cloudinary
 app.post('/api/upload', authenticate, upload.single('file'), async (req, res) => {
   try {
+    console.log('Upload request received');
+    console.log('File:', req.file);
+    console.log('User:', req.user);
     if (!req.file) {
       console.error('No file received by multer');
       return res.status(400).json({ error: 'No file uploaded' });
     }
+    console.log('File uploaded successfully to Cloudinary:', req.file.path);
     res.json({ url: req.file.path });
   } catch (err) {
     console.error('Upload error:', err);
+    console.error('Upload error stack:', err.stack);
     res.status(500).json({ error: err.message || 'Upload failed' });
   }
 });

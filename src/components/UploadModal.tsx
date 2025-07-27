@@ -37,10 +37,12 @@ export function UploadModal({ onClose, onSuccess, onUpload, user }: UploadModalP
       if (file) {
         const uploadData = new FormData();
         uploadData.append('file', file);
+        const token = localStorage.getItem('token');
         const res = await fetch(`${import.meta.env.VITE_API_URL}/upload`, {
           method: 'POST',
           body: uploadData,
-          credentials: 'include'
+          credentials: 'include',
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'File upload failed');

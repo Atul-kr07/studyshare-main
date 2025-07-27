@@ -39,27 +39,33 @@ export function useResources() {
 
   // Upload a new resource
   const uploadResource = async (resourceData: Omit<Resource, 'id'>): Promise<boolean> => {
-    setLoading(true);
-    setError(null);
     try {
+      const token = localStorage.getItem('token');
       const res = await fetch(`${API_URL}/resources`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         credentials: 'include',
         body: JSON.stringify(resourceData)
       });
-      if (!res.ok) {
-        throw new Error(`Failed to upload resource: ${res.status}`);
+      if (res.ok) {
+        // Re-fetch resources after upload
+        const token = localStorage.getItem('token');
+        const updated = await fetch(`${API_URL}/resources`, { 
+          credentials: 'include',
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        const data = await updated.json();
+        if (updated.ok && data.resources) {
+          setResources(data.resources);
+        }
+        return true;
       }
-      // Re-fetch resources after upload
-      await fetchResources();
-      return true;
-    } catch (err: any) {
-      console.error('Error uploading resource:', err);
-      setError(err.message || 'Unknown error');
       return false;
-    } finally {
-      setLoading(false);
+    } catch {
+      return false;
     }
   };
 
