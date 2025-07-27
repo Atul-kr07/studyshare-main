@@ -85,11 +85,13 @@ app.get('/api/auth/google/callback', passport.authenticate('google', { session: 
     httpOnly: true,
     secure: false, // Set to false for now, can be true in production with HTTPS
     sameSite: 'lax', // More permissive for cross-site requests
+    domain: '.onrender.com', // Allow cookies for onrender.com domain
+    path: '/', // Set path to root
     maxAge: 24 * 60 * 60 * 1000
   });
   console.log('Cookie set, redirecting to:', process.env.FRONTEND_URL);
   // Redirect to frontend dashboard or profile
-  res.redirect(process.env.FRONTEND_URL);
+  res.redirect(`${process.env.FRONTEND_URL}?token=${token}`);
 });
 
 // Configure nodemailer transporter (using Gmail as example)
@@ -103,7 +105,11 @@ const transporter = nodemailer.createTransport({
 
 // Auth middleware
 const authenticate = (req, res, next) => {
-  const token = req.cookies.token;
+  // Try to get token from cookie first, then from Authorization header
+  let token = req.cookies.token;
+  if (!token && req.headers.authorization) {
+    token = req.headers.authorization.replace('Bearer ', '');
+  }
   console.log('Auth middleware - Token received:', token ? token.substring(0, 20) + '...' : 'No token');
   if (!token) return res.status(401).json({ error: 'Not authenticated' });
   try {
