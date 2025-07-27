@@ -57,12 +57,13 @@ export function UploadModal({ onClose, onSuccess, onUpload, user }: UploadModalP
       const resourceData = {
         ...formData,
         tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
-        uploadedBy: user.id,
+        uploadedBy: user.id, // Make sure this is included
         uploadedAt: new Date().toISOString(),
         downloads: 0,
         rating: 0,
         fileUrl
       };
+      console.log('Resource data being sent:', resourceData);
 
       // 3. Call your uploadResource function (save to DB)
       const success = await onUpload(resourceData);

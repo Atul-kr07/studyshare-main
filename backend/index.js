@@ -189,7 +189,7 @@ app.post('/api/resources', authenticate, async (req, res) => {
       category,
       fileType,
       fileUrl,
-      uploadedBy,
+      uploadedBy: req.user.id, // Use authenticated user's ID for security
       downloads: downloads || 0,
       rating: rating || 0,
       tags: tags || []
@@ -261,3 +261,19 @@ app.get('/api/user/:id', async (req, res) => {
 });
 
 app.listen(4000, () => console.log('API running on http://localhost:4000'));
+
+// Test endpoint to check MongoDB connection
+app.get('/api/test-db', async (req, res) => {
+  try {
+    console.log('Testing MongoDB connection...');
+    const testUser = new User({ name: 'Test User', email: 'test@test.com' });
+    await testUser.save();
+    console.log('Test user created successfully');
+    await User.findByIdAndDelete(testUser._id);
+    console.log('Test user deleted successfully');
+    res.json({ message: 'MongoDB connection working' });
+  } catch (err) {
+    console.error('MongoDB test failed:', err);
+    res.status(500).json({ error: 'MongoDB connection failed', details: err.message });
+  }
+});
