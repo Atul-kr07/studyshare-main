@@ -16,7 +16,7 @@ export type Resource = {
   category: string;
   fileType: string;
   fileUrl: string;
-  uploadedBy: string;
+  uploadedBy: string | { toString(): string };
   uploadedAt: string;
   downloads: number;
   rating: number;
@@ -26,7 +26,8 @@ export type Resource = {
 };
 
 export type User = {
-  id: string;
+  id?: string;
+  _id?: string;
   email: string;
   name: string;
   college: string;
@@ -99,19 +100,29 @@ function App() {
         (() => {
           console.log('Complete user object:', user);
           console.log('User object keys:', Object.keys(user));
-          const userResources = resources.filter((r: Resource) => String(r.uploadedBy) === String(user.id));
+          // Use _id instead of id (MongoDB ObjectId)
+          const userId = user._id || user.id;
+          console.log('User ID to use:', userId);
+          const userResources = resources.filter((r: Resource) => {
+            // Handle ObjectId comparison properly
+            const resourceUserId = typeof r.uploadedBy === 'object' ? r.uploadedBy.toString() : String(r.uploadedBy);
+            const currentUserId = String(userId);
+            return resourceUserId === currentUserId;
+          });
           console.log('All resources:', resources);
-          console.log('User ID:', user.id, 'Type:', typeof user.id);
+          console.log('User ID:', userId, 'Type:', typeof userId);
           console.log('User resources:', userResources);
           console.log('Resource uploadedBy values:', resources.map(r => ({ 
             id: r.id, 
             uploadedBy: r.uploadedBy, 
             type: typeof r.uploadedBy,
-            comparison: String(r.uploadedBy) === String(user.id)
+            comparison: (typeof r.uploadedBy === 'object' ? r.uploadedBy.toString() : String(r.uploadedBy)) === String(userId)
           })));
           console.log('Filtering details:');
           resources.forEach((r, index) => {
-            console.log(`Resource ${index}: uploadedBy="${r.uploadedBy}" (${typeof r.uploadedBy}) vs user.id="${user.id}" (${typeof user.id}) = ${String(r.uploadedBy) === String(user.id)}`);
+            const resourceUserId = typeof r.uploadedBy === 'object' ? r.uploadedBy.toString() : String(r.uploadedBy);
+            const currentUserId = String(userId);
+            console.log(`Resource ${index}: uploadedBy="${resourceUserId}" (${typeof r.uploadedBy}) vs userId="${currentUserId}" (${typeof userId}) = ${resourceUserId === currentUserId}`);
           });
           return (
             <UserProfile 
