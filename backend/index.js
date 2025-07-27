@@ -82,8 +82,8 @@ app.get('/api/auth/google/callback', passport.authenticate('google', { session: 
   const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET || 'secret', { expiresIn: '1d' });
   res.cookie('token', token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    secure: false, // Set to false for now, can be true in production with HTTPS
+    sameSite: 'lax', // More permissive for cross-site requests
     maxAge: 24 * 60 * 60 * 1000
   });
   // Redirect to frontend dashboard or profile
