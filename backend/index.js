@@ -168,6 +168,8 @@ app.post('/api/upload', authenticate, upload.single('file'), async (req, res) =>
 
 // Create a new resource
 app.post('/api/resources', authenticate, async (req, res) => {
+  console.log('Creating resource with data:', req.body);
+  console.log('Authenticated user:', req.user);
   const {
     title,
     description,
@@ -192,10 +194,13 @@ app.post('/api/resources', authenticate, async (req, res) => {
       rating: rating || 0,
       tags: tags || []
     });
+    console.log('Resource object created:', resource);
     await resource.save();
+    console.log('Resource saved successfully');
     res.json({ success: true });
   } catch (err) {
     console.error('Resource upload error:', err);
+    console.error('Resource upload error stack:', err.stack);
     res.status(500).json({ error: 'Failed to save resource' });
   }
 });
