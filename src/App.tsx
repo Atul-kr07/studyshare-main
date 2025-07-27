@@ -97,6 +97,8 @@ function App() {
 
       {currentView === 'profile' && user && (
         (() => {
+          console.log('Complete user object:', user);
+          console.log('User object keys:', Object.keys(user));
           const userResources = resources.filter((r: Resource) => String(r.uploadedBy) === String(user.id));
           console.log('All resources:', resources);
           console.log('User ID:', user.id, 'Type:', typeof user.id);
