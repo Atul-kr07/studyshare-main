@@ -98,7 +98,7 @@ function App() {
       {currentView === 'profile' && user && (
         <UserProfile 
           user={user}
-          resources={resources.filter((r: Resource) => r.uploadedBy === user.id)}
+          resources={resources.filter((r: Resource) => String(r.uploadedBy) === String(user.id))}
           onResourceSelect={handleResourceSelect}
           onBack={() => setCurrentView('dashboard')}
         />
