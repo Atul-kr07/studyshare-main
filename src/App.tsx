@@ -99,9 +99,18 @@ function App() {
         (() => {
           const userResources = resources.filter((r: Resource) => String(r.uploadedBy) === String(user.id));
           console.log('All resources:', resources);
-          console.log('User ID:', user.id);
+          console.log('User ID:', user.id, 'Type:', typeof user.id);
           console.log('User resources:', userResources);
-          console.log('Resource uploadedBy values:', resources.map(r => ({ id: r.id, uploadedBy: r.uploadedBy, type: typeof r.uploadedBy })));
+          console.log('Resource uploadedBy values:', resources.map(r => ({ 
+            id: r.id, 
+            uploadedBy: r.uploadedBy, 
+            type: typeof r.uploadedBy,
+            comparison: String(r.uploadedBy) === String(user.id)
+          })));
+          console.log('Filtering details:');
+          resources.forEach((r, index) => {
+            console.log(`Resource ${index}: uploadedBy="${r.uploadedBy}" (${typeof r.uploadedBy}) vs user.id="${user.id}" (${typeof user.id}) = ${String(r.uploadedBy) === String(user.id)}`);
+          });
           return (
             <UserProfile 
               user={user}
