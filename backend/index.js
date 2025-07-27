@@ -80,12 +80,14 @@ app.get('/api/auth/google/callback', passport.authenticate('google', { session: 
   // Issue JWT
   const user = req.user;
   const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET || 'secret', { expiresIn: '1d' });
+  console.log('Setting token for user:', user._id, 'Token:', token.substring(0, 20) + '...');
   res.cookie('token', token, {
     httpOnly: true,
     secure: false, // Set to false for now, can be true in production with HTTPS
     sameSite: 'lax', // More permissive for cross-site requests
     maxAge: 24 * 60 * 60 * 1000
   });
+  console.log('Cookie set, redirecting to:', process.env.FRONTEND_URL);
   // Redirect to frontend dashboard or profile
   res.redirect(process.env.FRONTEND_URL);
 });
@@ -102,12 +104,15 @@ const transporter = nodemailer.createTransport({
 // Auth middleware
 const authenticate = (req, res, next) => {
   const token = req.cookies.token;
+  console.log('Auth middleware - Token received:', token ? token.substring(0, 20) + '...' : 'No token');
   if (!token) return res.status(401).json({ error: 'Not authenticated' });
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    console.log('Token verified for user:', decoded.id);
     req.user = decoded;
     next();
-  } catch {
+  } catch (err) {
+    console.log('Token verification failed:', err.message);
     return res.status(401).json({ error: 'Invalid token' });
   }
 };
